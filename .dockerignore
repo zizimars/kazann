@@ -1,0 +1,16 @@
+__pycache__
+.venv
+venv
+
+img/
+
+data/*
+!data/khwtds.csv
+
+HK_dataset
+
+.env
+.env.sample
+.gitignore
+Dockerfile
+fly.toml

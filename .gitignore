@@ -1,0 +1,14 @@
+__pycache__
+.venv
+venv
+
+img/
+
+data/*
+!data/khwtds.csv
+
+HK_dataset
+
+.env
+
+data.zip
