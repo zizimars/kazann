@@ -24,6 +24,7 @@ data = pd.read_csv(
 def get_unshown_images() -> pd.DataFrame:
     shown_images = db.get_all_unique_ids()
     unshown_images = data[~data["ID"].isin(shown_images)]
+    print(f"Shown {len(shown_images)}/{len(unshown_images)} so far")
     return unshown_images
 
 
