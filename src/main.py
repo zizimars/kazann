@@ -1,6 +1,6 @@
 import datetime
 import os
-import sqlite3
+import logging
 
 import telebot
 from telebot import types
@@ -9,6 +9,8 @@ import pandas as pd
 
 import db
 
+
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 TG_TOKEN = os.environ["TG_TOKEN"]
@@ -21,14 +23,21 @@ data = pd.read_csv(
 )
 
 
+def filter_call(call: types.CallbackQuery) -> bool:
+    _, image_id = call.data.split("_")
+    image_id = int(float(image_id))
+    shown_images = db.get_all_unique_ids()
+    return image_id not in shown_images
+
+
 def get_unshown_images() -> pd.DataFrame:
     shown_images = db.get_all_unique_ids()
     unshown_images = data[~data["ID"].isin(shown_images)]
-    print(f"Shown {len(shown_images)}/{len(unshown_images)} so far")
+    logging.info(f"Shown {len(shown_images)}/{len(unshown_images)} so far")
     return unshown_images
 
 
-@bot.callback_query_handler(func=lambda _: True)
+@bot.callback_query_handler(func=filter_call)
 def callback_handler(call: types.CallbackQuery):
     user_name = call.from_user.username
     action, image_id = call.data.split("_")
@@ -37,20 +46,23 @@ def callback_handler(call: types.CallbackQuery):
     current_time = datetime.datetime.now()
 
     if action in ["yes", "DELETE"]:
+        logging.info(
+            f'Saving answer for image {image_id}: {1 if action == "yes" else 0}'
+        )
         try:
             db.insert(
                 user_name=user_name,
                 id=image_id,
                 answer=1 if action == "yes" else 0,
-                annotation=None,
+                annotation="",
                 time=current_time,
             )
             bot.send_message(
                 chat_id=call.message.chat.id,
                 text=f"{image_id} : \nЖауап сақталды. Рахмет!",
             )
-
-        except sqlite3.IntegrityError:
+        except Exception as e:
+            logging.warning("In callback_handler:", e)
             bot.send_message(
                 chat_id=call.message.chat.id,
                 text=f"{image_id} суретке бұрын жауап берілген. Келесі суретке көшеміз.",
@@ -81,6 +93,7 @@ def start(message):
 
     if os.path.exists(image["Image"]):
         with open(image["Image"], "rb") as photo:
+            logging.info(f'Showing image {image["ID"]}')
             bot.send_photo(
                 chat_id=message.chat.id,
                 photo=photo,
@@ -108,6 +121,7 @@ def process_custom_description(message: types.Message, image_id, user_name):
     current_time = datetime.datetime.now()
 
     try:
+        logging.info(f"Saving annotation for image {image_id}: {custom_description}")
         db.insert(
             user_name=user_name,
             id=image_id,
@@ -115,7 +129,8 @@ def process_custom_description(message: types.Message, image_id, user_name):
             annotation=custom_description,
             time=current_time,
         )
-    except sqlite3.IntegrityError:
+    except Exception as e:
+        logging.warning("In process_custom_description:", e)
         db.update(
             user_name=user_name,
             id=image_id,
@@ -147,7 +162,7 @@ def handle_support(message):
 
 
 def main():
-    print("Starting...")
+    logging.info("Starting...")
     bot.polling(non_stop=True)
 
 

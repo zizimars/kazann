@@ -12,3 +12,5 @@ HK_dataset
 .env
 
 data.zip
+
+*.log
